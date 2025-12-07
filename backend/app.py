@@ -22,7 +22,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 # Enable CORS
-CORS(app, supports_credentials=True, origins=["http://localhost:3000"])  # React app default port
+CORS(app)  # React app default port
 
 # MongoDB connection
 client = MongoClient(Config.MONGO_URI)
