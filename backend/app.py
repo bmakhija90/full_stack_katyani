@@ -73,4 +73,4 @@ if __name__ == '__main__':
     print(f"Database: {Config.DATABASE_NAME}")
     print(f"CORS enabled for: http://localhost:3000")
     
-    serve(app, host='0.0.0.0', port=6000)
+    serve(app, host='0.0.0.0', port=8080)
