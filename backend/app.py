@@ -4,7 +4,7 @@ from pymongo import MongoClient
 from config import Config
 import logging
 from datetime import datetime
-
+from waitress import serve
 # Import blueprints
 from routes.auth import auth_bp
 from routes.products import products_bp
@@ -73,4 +73,4 @@ if __name__ == '__main__':
     print(f"Database: {Config.DATABASE_NAME}")
     print(f"CORS enabled for: http://localhost:3000")
     
-    app.run(debug=True, host='0.0.0.0', port=6000)
+    serve(app, host='0.0.0.0', port=6000)
