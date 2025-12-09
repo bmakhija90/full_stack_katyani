@@ -7,6 +7,8 @@ import stripe
 import os
 from flask import current_app
 from flask_cors import cross_origin
+from services.email_service import email_service
+
 
 
 orders_bp = Blueprint('orders', __name__)
@@ -401,7 +403,15 @@ def confirm_order_success(order_id):
             # Get user ID from order
             order = db.orders.find_one({'_id': ObjectId(order_id)})
             user_id = order.get('userId')
-            
+            current_app.logger.info(f'Order {order_id} payment confirmed for user {user_id}')
+            user = request.db.users.find_one({'_id': ObjectId(request.user_id)})
+            if order and user:
+                email_sent = email_service.send_order_confirmation(order, user)
+                if email_sent:
+                    current_app.logger.info(f'Order confirmation email sent for order {order_id}')
+                else:
+                    current_app.logger.error(f'Failed to send order confirmation email for order {order_id}')
+
             # Clear user's cart
             if user_id:
                 db.users.update_one(
