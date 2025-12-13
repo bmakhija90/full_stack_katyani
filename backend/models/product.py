@@ -15,10 +15,11 @@ class ProductModel:
             'sizes': product_data.get('sizes', []),
             'availability': product_data.get('availability', True),
             'stock': int(product_data.get('stock', 0)),
-            'tags': product_data.get('tags', []),
+            
             'createdAt': datetime.utcnow(),
             'updatedAt': datetime.utcnow()
         }
+        print("Creating product with data:", product)
         result = products.insert_one(product)
         return str(result.inserted_id)
 
@@ -54,11 +55,28 @@ class ProductModel:
         return product
 
     @staticmethod
+    @staticmethod
     def update_product(db, product_id, update_data):
-        db.products.update_one(
+        # Don't overwrite created timestamp
+        if 'createdAt' in update_data:
+            del update_data['createdAt']
+        
+        # Always set updatedAt
+        update_data['updatedAt'] = datetime.utcnow()
+        
+        # Convert price to float if it exists
+        if 'price' in update_data:
+            update_data['price'] = float(update_data['price'])
+        
+        # Convert stock to int if it exists
+        if 'stock' in update_data:
+            update_data['stock'] = int(update_data['stock'])
+        
+        # Perform the update
+        result = db.products.update_one(
             {'_id': ObjectId(product_id)},
-            {
-                '$set': {**update_data, 'updatedAt': datetime.utcnow()}
-            }
+            {'$set': update_data}
         )
+        
+        # Return the updated product
         return ProductModel.get_product_by_id(db, product_id)

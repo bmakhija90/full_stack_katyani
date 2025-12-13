@@ -83,11 +83,86 @@ def create_product():
 @admin_required
 def update_product(product_id):
     try:
-        data = request.json
-        updated_product = ProductModel.update_product(request.db, product_id, data)
-        
-        if not updated_product:
+        # First, get the existing product
+        existing_product = ProductModel.get_product_by_id(request.db, product_id)
+        if not existing_product:
             return jsonify({'error': 'Product not found'}), 404
+        
+        # Initialize update_data with existing images by default
+        update_data = {}
+        
+        # Check if request contains files (multipart/form-data for images)
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            print("Processing multipart/form-data update")
+            data = request.form
+            
+            # Handle new image uploads if provided
+            new_images = []
+            if 'images' in request.files:
+                image_files = request.files.getlist('images')
+                print(f"Found {len(image_files)} image files")
+                for image_file in image_files:
+                    if image_file.filename:
+                        encoded_image = encode_image_to_base64(image_file)
+                        new_images.append({
+                            'data': encoded_image,
+                            'contentType': image_file.content_type,
+                            'filename': image_file.filename
+                        })
+            
+            # Parse sizes if provided
+            sizes = []
+            if 'sizes' in data:
+                try:
+                    sizes = data['sizes'].split(',') if isinstance(data['sizes'], str) else data['sizes']
+                except:
+                    sizes = []
+            
+            # Prepare update data
+            if 'name' in data:
+                update_data['name'] = data['name']
+            if 'description' in data:
+                update_data['description'] = data.get('description', '')
+            if 'price' in data:
+                update_data['price'] = float(data['price'])
+            if 'category' in data:
+                update_data['category'] = data['category']
+            if sizes:
+                update_data['sizes'] = sizes
+            if 'availability' in data:
+                update_data['availability'] = data.get('availability', 'true').lower() == 'true'
+            if 'stock' in data:
+                update_data['stock'] = int(data.get('stock', 0))
+            
+            # Handle images - ALWAYS preserve existing images unless explicitly replacing
+            if new_images:
+                print(f"Adding {len(new_images)} new images")
+                # Check if we should replace all images or append
+                replace_images = data.get('replace_images', 'false').lower() == 'true'
+                
+                if replace_images:
+                    update_data['images'] = new_images
+                else:
+                    # Append new images to existing ones
+                    update_data['images'] = existing_product.get('images', []) + new_images
+            else:
+                # No new images, preserve existing ones
+                update_data['images'] = existing_product.get('images', [])
+                print("Preserving existing images")
+            
+        else:
+            # Regular JSON update - NO IMAGES, just text data
+            print("Processing JSON update")
+            data = request.json
+            update_data = data
+            
+            # For JSON updates, preserve existing images if not provided
+            if 'images' not in data:
+                update_data['images'] = existing_product.get('images', [])
+                print("Preserving existing images in JSON update")
+        
+        # Update the product
+        updated_product = ProductModel.update_product(request.db, product_id, update_data)
         
         return jsonify({
             'message': 'Product updated successfully',
@@ -95,6 +170,9 @@ def update_product(product_id):
         }), 200
         
     except Exception as e:
+        import traceback
+        print(f"Error in update_product: {str(e)}")
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @products_bp.route('/categories', methods=['GET'])
